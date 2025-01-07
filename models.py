@@ -48,3 +48,20 @@ class Enquiry(BaseModel):
         json_encoders = {
             ObjectId: str
         }
+
+# Schema for Admission Form
+class Admission(BaseModel):
+    student_name: str
+    course: str
+    board: str
+    subjects: str
+    joining_date: str
+    address: str
+    contact_no: str
+    fees: float
+
+    class Config:
+        # Convert ObjectId to string when returning data
+        json_encoders = {
+            ObjectId: str
+        }
