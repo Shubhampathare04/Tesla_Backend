@@ -6,6 +6,8 @@ from models import Course
 from database import courses_collection
 from models import Enquiry
 from database import enquiries_collection
+from database import admissions_collection
+from models import Admission
 
 
 app = FastAPI()
@@ -109,3 +111,59 @@ async def delete_enquiry(enquiry_id: str):
         return {"message": "Enquiry deleted successfully"}
     except InvalidId:
         raise HTTPException(status_code=400, detail="Invalid Enquiry ID format")
+
+
+
+# Create a new admissions
+@app.post("/admissions/")
+async def create_admission(new_admission: Admission):
+    admission_data = new_admission.dict()
+    try:
+        result = await admissions_collection.insert_one(admission_data)
+        admission_data["_id"] = str(result.inserted_id)
+        return bson_to_json(admission_data)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to create admission: {str(e)}")
+
+
+# Get all admissions
+@app.get("/admissions/")
+async def get_all_admissions():
+    admissions_cursor = admissions_collection.find()
+    admissions = await admissions_cursor.to_list(length=None)
+    return [bson_to_json(admission) for admission in admissions]
+
+# Delete an admission by ID
+@app.delete("/admissions/{admission_id}")
+async def delete_admission(admission_id: str):
+    try:
+        result = await admissions_collection.delete_one({"_id": ObjectId(admission_id)})
+        if result.deleted_count == 0:
+            raise HTTPException(status_code=404, detail="Admission not found")
+        return {"message": "Admission deleted successfully"}
+    except InvalidId:
+        raise HTTPException(status_code=400, detail="Invalid Admission ID format")
+
+# Update an admission by ID
+@app.put("/admissions/{admission_id}", response_model=Admission)
+async def update_admission(admission_id: str, updated_admission: Admission):
+    try:
+        # Convert updated admission to dictionary
+        admission_data = updated_admission.dict()
+        # Check if the admission exists
+        existing_admission = await admissions_collection.find_one({"_id": ObjectId(admission_id)})
+        if not existing_admission:
+            raise HTTPException(status_code=404, detail="Admission not found")
+        
+        # Update the admission in the database
+        result = await admissions_collection.update_one(
+            {"_id": ObjectId(admission_id)}, {"$set": admission_data}
+        )
+        if result.modified_count == 0:
+            raise HTTPException(status_code=400, detail="Failed to update the admission")
+        
+        # Return the updated admission
+        admission_data["_id"] = admission_id
+        return bson_to_json(admission_data)
+    except InvalidId:
+        raise HTTPException(status_code=400, detail="Invalid Admission ID format")
