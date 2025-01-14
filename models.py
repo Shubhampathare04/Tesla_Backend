@@ -55,7 +55,7 @@ class Admission(BaseModel):
     student_name: str
     course: str
     board: str
-    subjects: str
+    standard: str
     joining_date: str
     address: str
     contact_no: str
