@@ -114,6 +114,7 @@ async def delete_enquiry(enquiry_id: str):
 
 
 
+
 # Create a new admissions
 @app.post("/admissions/")
 async def create_admission(new_admission: Admission):

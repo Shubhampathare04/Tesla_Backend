@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import List,Optional
 from bson import ObjectId  # Import ObjectId
 
 # Schema for incoming requests
@@ -50,12 +50,13 @@ class Enquiry(BaseModel):
         }
 
 
+
 # Schema for Admission Form
 class Admission(BaseModel):
     student_name: str
     course: str
     board: str
-    standard: str
+    subjects: str
     joining_date: str
     address: str
     contact_no: str
