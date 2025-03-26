@@ -21,9 +21,21 @@ class Course(BaseModel):
     description: str
     courselink: str
     standard: str
+    price: float  # Adding price field
 
     class Config:
         json_encoders = {ObjectId: str}
+        
+class CourseUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    courselink: Optional[str] = None
+    standard: Optional[str] = None
+    price: Optional[float] = None
+
+    class Config:
+        json_encoders = {ObjectId: str}
+
 
 # Schema for progress (new)
 class Progress(BaseModel):

@@ -2,7 +2,7 @@ from fastapi import FastAPI, HTTPException
 from bson import ObjectId
 from bson.errors import InvalidId
 from fastapi.middleware.cors import CORSMiddleware
-from models import Course, Enquiry, Admission, Progress
+from models import Course, Enquiry, Admission, Progress ,CourseUpdate
 from database import courses_collection, enquiries_collection, admissions_collection, progress_collection
 from pydantic import BaseModel
 from typing import Optional
@@ -51,9 +51,11 @@ async def create_course(new_course: Course):
     existing_course = await courses_collection.find_one({"title": course_data["title"]})
     if existing_course:
         raise HTTPException(status_code=400, detail="Course with this title already exists")
+    
     result = await courses_collection.insert_one(course_data)
     course_data["_id"] = str(result.inserted_id)
     return bson_to_json(course_data)
+
 
 @app.get("/courses/")
 async def get_all_courses():
@@ -66,6 +68,56 @@ async def get_all_courses():
             grouped_courses[standard] = []
         grouped_courses[standard].append(bson_to_json(course))
     return grouped_courses
+
+@app.delete("/courses/{course_id}")
+async def delete_course(course_id: str):
+    try:
+        # Verify it's a valid ObjectId
+        course_oid = ObjectId(course_id)
+        
+        # Check if course exists
+        course = await courses_collection.find_one({"_id": course_oid})
+        if not course:
+            raise HTTPException(status_code=404, detail="Course not found")
+        
+        # Delete the course
+        result = await courses_collection.delete_one({"_id": course_oid})
+        
+        # Additional cleanup: remove related progress entries
+        await progress_collection.delete_many({"course_title": course["title"]})
+        
+        return {"message": "Course deleted successfully"}
+    except InvalidId:
+        raise HTTPException(status_code=400, detail="Invalid Course ID format")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error deleting course: {str(e)}")
+    
+@app.put("/courses/{course_id}", response_model=Course)
+async def update_course(course_id: str, updated_course: CourseUpdate):
+    try:
+        course_oid = ObjectId(course_id)
+        existing_course = await courses_collection.find_one({"_id": course_oid})
+
+        if not existing_course:
+            raise HTTPException(status_code=404, detail="Course not found")
+
+        update_data = {k: v for k, v in updated_course.dict().items() if v is not None}  # Filter out None values
+        if not update_data:
+            raise HTTPException(status_code=400, detail="No valid fields provided for update")
+
+        result = await courses_collection.update_one({"_id": course_oid}, {"$set": update_data})
+
+        if result.modified_count == 0:
+            raise HTTPException(status_code=400, detail="No changes were made")
+
+        updated_course_dict = await courses_collection.find_one({"_id": course_oid})
+        updated_course_dict["_id"] = str(updated_course_dict["_id"])  # Convert ObjectId to string
+        return updated_course_dict
+
+    except InvalidId:
+        raise HTTPException(status_code=400, detail="Invalid Course ID format")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error updating course: {str(e)}")
 
 @app.post("/buy_course/", response_model=Progress)
 async def buy_course(purchase: Progress):
@@ -130,22 +182,6 @@ async def complete_course(progress_id: str, update: CompletionUpdate):
         raise HTTPException(status_code=400, detail="Invalid Progress ID format")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error updating course completion: {str(e)}")
-
-@app.post("/buy_course/", response_model=Progress)
-async def buy_course(purchase: Progress):
-    try:
-        if not await courses_collection.find_one({"title": purchase.course_title}):
-            raise HTTPException(status_code=404, detail="Course not found")
-
-        if await progress_collection.find_one({"user_id": purchase.user_id, "course_title": purchase.course_title}):
-            raise HTTPException(status_code=400, detail="Course already purchased")
-
-        progress_data = purchase.dict()
-        result = await progress_collection.insert_one(progress_data)
-        progress_data["_id"] = str(result.inserted_id)
-        return bson_to_json(progress_data)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error purchasing course: {str(e)}")
 
 @app.get("/progress/{user_id}")
 async def get_user_progress(user_id: str):
