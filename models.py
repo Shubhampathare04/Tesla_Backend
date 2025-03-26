@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 from typing import Optional
-from bson import ObjectId  # Import ObjectId
+from bson import ObjectId
 
 # Schema for incoming requests
 class TeamMember(BaseModel):
@@ -10,17 +10,12 @@ class TeamMember(BaseModel):
     photo: Optional[str] = None
 
     class Config:
-        # Allow MongoDB's ObjectId to be used as a string
-        json_encoders = {
-            ObjectId: str  # Convert ObjectId to string
-        }
+        json_encoders = {ObjectId: str}
 
-# Schema for database objects
 class TeamMemberInDB(TeamMember):
     _id: str
 
-
-# Schema for courses
+# Schema for courses (updated with total_lessons)
 class Course(BaseModel):
     title: str
     description: str
@@ -28,15 +23,18 @@ class Course(BaseModel):
     standard: str
 
     class Config:
-        # Allow MongoDB's ObjectId to be used as a string
-        json_encoders = {
-            ObjectId: str  # Convert ObjectId to string
-        }
+        json_encoders = {ObjectId: str}
 
+# Schema for progress (new)
+class Progress(BaseModel):
+    user_id: str
+    course_title: str
+    completed: bool = False
+    link: Optional[str] = None 
 
 class Enquiry(BaseModel):
     name: str
-    class_name: str  # Use 'class_name' instead of 'class' to avoid Python keyword conflict
+    class_name: str
     board: str
     subject: str
     country: str
@@ -44,12 +42,8 @@ class Enquiry(BaseModel):
     enquiryMessage: str
 
     class Config:
-        # Allow MongoDB's ObjectId to be used as a string
-        json_encoders = {
-            ObjectId: str
-        }
+        json_encoders = {ObjectId: str}
 
-# Schema for Admission Form
 class Admission(BaseModel):
     student_name: str
     course: str
@@ -61,7 +55,5 @@ class Admission(BaseModel):
     fees: float
 
     class Config:
-        # Convert ObjectId to string when returning data
-        json_encoders = {
-            ObjectId: str
-        }
+        json_encoders = {ObjectId: str}
+        
